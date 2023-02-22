@@ -1,7 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using RedLockNet;
+using RedLockNet.SERedis;
 using SimpleDLock.Core.Entities;
 using SimpleDLock.Core.Persistence;
 using System;
@@ -9,6 +12,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace SimpleDLock.Pages
 {
@@ -17,13 +21,16 @@ namespace SimpleDLock.Pages
     {
         private readonly ILogger<IndexModel> _logger;
         private readonly MainDbContext _dbContext;
+        private readonly RedLockFactory _redLockFactory;
 
         public IndexModel(
             ILogger<IndexModel> logger,
-            MainDbContext dbContext)
+            MainDbContext dbContext,
+            RedLockFactory redLockFactory)
         {
             _logger = logger;
             _dbContext = dbContext;
+            _redLockFactory = redLockFactory;
         }
 
         public IEnumerable<BookingEntity> Bookings { get; set; }
@@ -45,27 +52,30 @@ namespace SimpleDLock.Pages
 
         public void OnPost()
         {
-            var exists = _dbContext.Booking.Any(b => b.FieldName == FieldName);
+            using (var redLock = AcquireLock(FieldName))
+            {
+                var exists = _dbContext.Booking.Any(b => b.FieldName == FieldName);
 
-            if (exists)
-            {
-                Message = $"{FieldName} is not available!";
-            }
-            else
-            {
-                _dbContext.Add(new BookingEntity
+                if (exists)
                 {
-                    Id = Guid.NewGuid(),
-                    UserName = UserName,
-                    FieldName = FieldName,
-                    BookedTime = DateTimeOffset.Now
-                });
+                    Message = $"{FieldName} is not available!";
+                }
+                else
+                {
+                    _dbContext.Add(new BookingEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        UserName = UserName,
+                        FieldName = FieldName,
+                        BookedTime = DateTimeOffset.Now
+                    });
 
-                Thread.Sleep(2000);
+                    Thread.Sleep(2000);
 
-                _dbContext.SaveChanges();
+                    _dbContext.SaveChanges();
 
-                Message = "Booked successfully!";
+                    Message = "Booked successfully!";
+                }
             }
 
             FetchData();
@@ -75,6 +85,16 @@ namespace SimpleDLock.Pages
         {
             Bookings = _dbContext.Booking.OrderByDescending(b => b.BookedTime).ToArray();
             Fields = _dbContext.Field.ToArray();
+        }
+
+        public IRedLock AcquireLock(string key)
+        {
+            var redLock = _redLockFactory.CreateLock(key,
+                expiryTime: TimeSpan.FromMilliseconds(10000),
+                waitTime: TimeSpan.FromMilliseconds(5000),
+                retryTime: TimeSpan.FromMilliseconds(500));
+
+            return redLock;
         }
     }
 }

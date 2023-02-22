@@ -24,6 +24,7 @@ namespace SimpleDLock
             services.AddRazorPages();
 
             services.AddRedisConnection(Configuration)
+                .AddRedLock()
                 .AddDbContext<MainDbContext>(opt =>
                 {
                     opt.UseSqlServer(Configuration.GetConnectionString(nameof(MainDbContext)));
