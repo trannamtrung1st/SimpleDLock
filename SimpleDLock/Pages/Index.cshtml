@@ -5,6 +5,32 @@
 }
 
 <div class="text-center">
-    <h1 class="display-4">Welcome</h1>
+    <h1 class="display-4">Field Management System</h1>
     <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
 </div>
+
+<form method="post">
+    <div class="form-group">
+        <label asp-for="UserName" class="form-label">User Name</label>
+        <input required asp-for="UserName" class="form-control" placeholder="e.g, SE130097">
+    </div>
+    <div>@Model.Message</div>
+    <hr />
+    <div class="row">
+        @foreach (var field in Model.Fields)
+        {
+            <div class="col-3 p-1">
+                <button type="submit" name="FieldName" value="@field.Name" class="btn btn-primary">
+                    Book @field.Name
+                </button>
+            </div>
+        }
+    </div>
+    <hr />
+    <div>
+        @foreach (var booking in Model.Bookings)
+        {
+            <div><b>@booking.UserName</b> booked <b>@booking.FieldName</b> at @booking.BookedTime</div>
+        }
+    </div>
+</form>

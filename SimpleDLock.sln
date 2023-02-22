@@ -5,6 +5,8 @@ VisualStudioVersion = 17.4.33122.133
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleDLock", "SimpleDLock\SimpleDLock.csproj", "{333E2055-C5C1-4865-926E-6969D8859F84}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleDLock.Core", "SimpleDLock.Core\SimpleDLock.Core.csproj", "{3EC7D856-E5D3-4468-B069-20270B519608}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{333E2055-C5C1-4865-926E-6969D8859F84}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{333E2055-C5C1-4865-926E-6969D8859F84}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{333E2055-C5C1-4865-926E-6969D8859F84}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3EC7D856-E5D3-4468-B069-20270B519608}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3EC7D856-E5D3-4468-B069-20270B519608}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3EC7D856-E5D3-4468-B069-20270B519608}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3EC7D856-E5D3-4468-B069-20270B519608}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

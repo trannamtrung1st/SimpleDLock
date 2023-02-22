@@ -1,12 +1,11 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using SimpleDLock.Core.Persistence;
+using SimpleDLock.Core.Utils;
 
 namespace SimpleDLock
 {
@@ -23,11 +22,19 @@ namespace SimpleDLock
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddRazorPages();
+
+            services.AddRedisConnection(Configuration)
+                .AddDbContext<MainDbContext>(opt =>
+                {
+                    opt.UseSqlServer(Configuration.GetConnectionString(nameof(MainDbContext)));
+                });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, MainDbContext dbContext)
         {
+            Initialize(dbContext);
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -47,6 +54,13 @@ namespace SimpleDLock
             {
                 endpoints.MapRazorPages();
             });
+        }
+
+        private void Initialize(MainDbContext dbContext)
+        {
+            dbContext.Database.Migrate();
+
+            dbContext.Database.ExecuteSqlInterpolated($"DELETE FROM Booking");
         }
     }
 }

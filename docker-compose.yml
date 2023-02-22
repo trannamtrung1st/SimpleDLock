@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  database:
+    image: mcr.microsoft.com/mssql/server:2019-CU18-ubuntu-20.04
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=z@123456!
+      - MSSQL_PID=Express
+    ports:
+      - target: 1433
+        published: 1434
+
+  redis:
+    image: redis:7.0.8-alpine
+    ports:
+      - target: 6379
+        published: 6379
+
+networks:
+  default:
+    name: simple-dlock-shared-network
