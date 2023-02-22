@@ -1,9 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SimpleDLock.Core.Entities;
 using SimpleDLock.Core.Persistence;
+using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -17,13 +20,16 @@ namespace SimpleDLock.Pages
     {
         private readonly ILogger<IndexModel> _logger;
         private readonly MainDbContext _dbContext;
+        private readonly ConnectionMultiplexer _multiplexer;
 
         public IndexModel(
             ILogger<IndexModel> logger,
-            MainDbContext dbContext)
+            MainDbContext dbContext,
+            ConnectionMultiplexer multiplexer)
         {
             _logger = logger;
             _dbContext = dbContext;
+            _multiplexer = multiplexer;
         }
 
         public IEnumerable<BookingEntity> Bookings { get; set; }
@@ -45,27 +51,38 @@ namespace SimpleDLock.Pages
 
         public void OnPost()
         {
-            var exists = _dbContext.Booking.Any(b => b.FieldName == FieldName);
+            var acquired = AcquireLock(FieldName, out var finalKey, out var randomVal);
 
-            if (exists)
+            if (!acquired)
             {
-                Message = $"{FieldName} is not available!";
+                Message = $"{FieldName} is busy!";
             }
             else
             {
-                _dbContext.Add(new BookingEntity
+                var exists = _dbContext.Booking.Any(b => b.FieldName == FieldName);
+
+                if (exists)
                 {
-                    Id = Guid.NewGuid(),
-                    UserName = UserName,
-                    FieldName = FieldName,
-                    BookedTime = DateTimeOffset.Now
-                });
+                    Message = $"{FieldName} is not available!";
+                }
+                else
+                {
+                    _dbContext.Add(new BookingEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        UserName = UserName,
+                        FieldName = FieldName,
+                        BookedTime = DateTimeOffset.Now
+                    });
 
-                Thread.Sleep(2000);
+                    Thread.Sleep(2000);
 
-                _dbContext.SaveChanges();
+                    _dbContext.SaveChanges();
 
-                Message = "Booked successfully!";
+                    Message = "Booked successfully!";
+                }
+
+                Release(finalKey, randomVal);
             }
 
             FetchData();
@@ -75,6 +92,32 @@ namespace SimpleDLock.Pages
         {
             Bookings = _dbContext.Booking.OrderByDescending(b => b.BookedTime).ToArray();
             Fields = _dbContext.Field.ToArray();
+        }
+
+        private bool AcquireLock(string key, out string finalKey, out string randomVal)
+        {
+            var db = _multiplexer.GetDatabase();
+
+            // Equivalent command: SET resource_name a_random_value NX PX {Milliseconds}
+            finalKey = $"redis-lock-{key}";
+            randomVal = Guid.NewGuid().ToString();
+
+            bool acquired = db.StringSet(key: finalKey, value: randomVal,
+                expiry: TimeSpan.FromMilliseconds(10000),
+                when: When.NotExists);
+
+            return acquired;
+        }
+
+        private void Release(string finalKey, string randomVal)
+        {
+            _multiplexer.GetDatabase().ScriptEvaluate(LuaScript.Prepare($@"
+if redis.call(""get"",@key) == @value then
+    return redis.call(""del"", @key)
+else
+    return 0
+end
+"), parameters: new { key = finalKey, value = randomVal });
         }
     }
 }
