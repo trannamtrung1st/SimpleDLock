@@ -54,6 +54,8 @@ namespace SimpleDLock.Pages
         {
             using (var redLock = AcquireLock(FieldName))
             {
+                if (!redLock.IsAcquired) throw new Exception("Timed out, couldn't acquire lock!");
+
                 var exists = _dbContext.Booking.Any(b => b.FieldName == FieldName);
 
                 if (exists)
